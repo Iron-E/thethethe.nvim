@@ -1,6 +1,7 @@
 local M = {}
 
--- load abbreviations.dict
+--- load abbreviations.dict
+--- @async
 local function load_abbreviations()
   -- load our dictionary string
   local dict = require("thethethe.dictionary")
