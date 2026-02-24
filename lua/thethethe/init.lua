@@ -9,7 +9,7 @@ local function load_abbreviations()
 
   local timer, err, err_name = vim.uv.new_timer()
   if err ~= nil or err_name ~= nil then
-    error(string.format("While loading abbreviations: %s [%s]", err, err_name))
+    return error(string.format("while creating uv timer: %s [%s]", err, err_name))
   end
 
   --- @cast timer -nil
@@ -43,7 +43,14 @@ function M.setup(opts)
   end
 
   -- execute the function after config.delay_ms
-  vim.defer_fn(load_abbreviations, config.delay_ms)
+  vim.defer_fn(function()
+    local ok, result = pcall(load_abbreviations)
+    if ok == true then
+      return
+    end
+
+    vim.notify("error while loading abbreviations: " .. result, vim.log.levels.ERROR)
+  end, config.delay_ms)
 end
 
 return M
