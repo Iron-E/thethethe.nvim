@@ -3,21 +3,33 @@ local M = {}
 -- load abbreviations.dict
 local function load_abbreviations()
   -- load our dictionary string
-  local s = require("thethethe.dictionary")
+  local dict = require("thethethe.dictionary")
 
-  -- split dictionary by lines
-  for line in s:gmatch("([^\n]*)\n?") do
-    -- split each line by the colon
-    local parts = {}
-    for part in line:gmatch("[^:]+") do
-      table.insert(parts, part)
-    end
+  local opts = {}
 
-    if #parts == 2 and parts[1] and parts[2] then
-      -- Add abbreviation via `iabbrev` (through vim.cmd)
-      vim.cmd(string.format("iabbrev %s %s", parts[1], parts[2]))
-    end
+  local timer, err, err_name = vim.uv.new_timer()
+  if err ~= nil or err_name ~= nil then
+    error(string.format("While loading abbreviations: %s [%s]", err, err_name))
   end
+
+  --- @cast timer -nil
+
+  local previous_key = nil
+  timer:start(0, 1, function()
+    for _ = 1, 20 do
+      local key, value = next(dict, previous_key)
+      if key == nil or value == nil then
+        timer:stop()
+        return
+      end
+
+      vim.schedule(function()
+        vim.api.nvim_set_keymap("ia", key, value, opts)
+      end)
+
+      previous_key = key
+    end
+  end)
 end
 
 -- create our exported setup() function
