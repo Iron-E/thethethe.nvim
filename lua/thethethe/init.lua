@@ -1,6 +1,12 @@
 local M = {}
 
 --- loads abbreviations asynchronously in a coroutine context
+---
+--- A coroutine is used so that the large number of abbreviations can be
+--- loaded without affecting editor responsiveness.
+---
+--- As we loop over the dictionary, each abbreviation is "scheduled" for creation.
+--- The loop will not continue until the previously scheduled abbreviation is added.
 --- @async
 local function load_abbreviations_co()
   local this_co = coroutine.running()
@@ -10,11 +16,14 @@ local function load_abbreviations_co()
 
   local opts = {}
   for key, value in pairs(dict) do
+    -- perform this action some time later
     vim.schedule(function()
       vim.api.nvim_set_keymap("ia", key, value, opts)
+      -- resume the coroutine, so we can add the next abbreviation
       coroutine.resume(this_co)
     end)
 
+    -- halt the coroutine until the scheduled action above is complete,
     coroutine.yield()
   end
 end
