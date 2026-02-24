@@ -1,36 +1,22 @@
 local M = {}
 
---- load abbreviations.dict
+--- loads abbreviations asynchronously in a coroutine context
 --- @async
-local function load_abbreviations()
-  -- load our dictionary string
+local function load_abbreviations_co()
+  local this_co = coroutine.running()
+
+  -- load our dictionary
   local dict = require("thethethe.dictionary")
 
   local opts = {}
+  for key, value in pairs(dict) do
+    vim.schedule(function()
+      vim.api.nvim_set_keymap("ia", key, value, opts)
+      coroutine.resume(this_co)
+    end)
 
-  local timer, err, err_name = vim.uv.new_timer()
-  if err ~= nil or err_name ~= nil then
-    return error(string.format("while creating uv timer: %s [%s]", err, err_name))
+    coroutine.yield()
   end
-
-  --- @cast timer -nil
-
-  local previous_key = nil
-  timer:start(0, 1, function()
-    for _ = 1, 20 do
-      local key, value = next(dict, previous_key)
-      if key == nil or value == nil then
-        timer:stop()
-        return
-      end
-
-      vim.schedule(function()
-        vim.api.nvim_set_keymap("ia", key, value, opts)
-      end)
-
-      previous_key = key
-    end
-  end)
 end
 
 -- create our exported setup() function
@@ -45,7 +31,7 @@ function M.setup(opts)
 
   -- execute the function after config.delay_ms
   vim.defer_fn(function()
-    local ok, result = pcall(load_abbreviations)
+    local ok, result = pcall(coroutine.wrap(load_abbreviations_co))
     if ok == true then
       return
     end
